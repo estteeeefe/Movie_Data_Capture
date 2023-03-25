@@ -22,19 +22,19 @@ def getInstance():
 
 class Config:
     def __init__(self, path: str = "config.ini"):
-        path_search_order = (
-            Path(path),
-            Path.cwd() / "config.ini",
-            Path.home() / "mdc.ini",
-            Path.home() / ".mdc.ini",
-            Path.home() / ".mdc/config.ini",
-            Path.home() / ".config/mdc/config.ini"
-        )
-        ini_path = None
-        for p in path_search_order:
-            if p.is_file():
-                ini_path = p.resolve()
-                break
+        # path_search_order = (
+        #     # Path(path),
+        #     # Path.cwd() / "config.ini",
+        #     # Path.home() / "mdc.ini",
+        #     # Path.home() / ".mdc.ini",
+        #     # Path.home() / ".mdc/config.ini",
+        #     Path.home() / ".config/mdc/config.ini"
+        # )
+        ini_path = Path.home() / ".config/mdc/config.ini"
+        # for p in path_search_order:
+        #     if p.is_file():
+        #         ini_path = p.resolve()
+        #         break
         if ini_path:
             self.conf = configparser.ConfigParser()
             self.ini_path = ini_path
@@ -55,43 +55,44 @@ class Config:
                 time.sleep(60)
                 os._exit(-1)
         else:
-            print("ERROR: Config file not found!")
-            print("Please put config file into one of the following path:")
-            print('\n'.join([str(p.resolve()) for p in path_search_order[2:]]))
-            # 对于找不到配置文件的情况，还是在打包时附上对应版本的默认配置文件，有需要时为其在搜索路径中生成，
-            # 要比用户乱找一个版本不对应的配置文件会可靠些。这样一来，单个执行文件就是功能完整的了，放在任何
-            # 执行路径下都可以放心使用。
-            res_path = None
-            # pyinstaller打包的在打包中找config.ini
-            if hasattr(sys, '_MEIPASS') and (Path(getattr(sys, '_MEIPASS')) / 'config.ini').is_file():
-                res_path = Path(getattr(sys, '_MEIPASS')) / 'config.ini'
-            # 脚本运行的所在位置找
-            elif (Path(__file__).resolve().parent / 'config.ini').is_file():
-                res_path = Path(__file__).resolve().parent / 'config.ini'
-            if res_path is None:
-                os._exit(2)
-            ins = input("Or, Do you want me create a config file for you? (Yes/No)[Y]:")
-            if re.search('n', ins, re.I):
-                os._exit(2)
-            # 用户目录才确定具有写权限，因此选择 ~/mdc.ini 作为配置文件生成路径，而不是有可能并没有写权限的
-            # 当前目录。目前版本也不再鼓励使用当前路径放置配置文件了，只是作为多配置文件的切换技巧保留。
-            write_path = path_search_order[2]  # Path.home() / "mdc.ini"
-            write_path.write_text(res_path.read_text(encoding='utf-8'), encoding='utf-8')
-            print("Config file '{}' created.".format(write_path.resolve()))
-            input("Press Enter key exit...")
-            os._exit(0)
-            # self.conf = self._default_config()
-            # try:
-            #     self.conf = configparser.ConfigParser()
-            #     try: # From single crawler debug use only
-            #         self.conf.read('../' + path, encoding="utf-8-sig")
-            #     except:
-            #         self.conf.read('../' + path, encoding="utf-8")
-            # except Exception as e:
-            #     print("[-]Config file not found! Use the default settings")
-            #     print("[-]",e)
-            #     os._exit(3)
-            #     #self.conf = self._default_config()
+            pass
+            # print("ERROR: Config file not found!")
+            # print("Please put config file into one of the following path:")
+            # print('\n'.join([str(p.resolve()) for p in path_search_order[2:]]))
+            # # 对于找不到配置文件的情况，还是在打包时附上对应版本的默认配置文件，有需要时为其在搜索路径中生成，
+            # # 要比用户乱找一个版本不对应的配置文件会可靠些。这样一来，单个执行文件就是功能完整的了，放在任何
+            # # 执行路径下都可以放心使用。
+            # res_path = None
+            # # pyinstaller打包的在打包中找config.ini
+            # if hasattr(sys, '_MEIPASS') and (Path(getattr(sys, '_MEIPASS')) / 'config.ini').is_file():
+            #     res_path = Path(getattr(sys, '_MEIPASS')) / 'config.ini'
+            # # 脚本运行的所在位置找
+            # elif (Path(__file__).resolve().parent / 'config.ini').is_file():
+            #     res_path = Path(__file__).resolve().parent / 'config.ini'
+            # if res_path is None:
+            #     os._exit(2)
+            # ins = input("Or, Do you want me create a config file for you? (Yes/No)[Y]:")
+            # if re.search('n', ins, re.I):
+            #     os._exit(2)
+            # # 用户目录才确定具有写权限，因此选择 ~/mdc.ini 作为配置文件生成路径，而不是有可能并没有写权限的
+            # # 当前目录。目前版本也不再鼓励使用当前路径放置配置文件了，只是作为多配置文件的切换技巧保留。
+            # write_path = path_search_order[2]  # Path.home() / "mdc.ini"
+            # write_path.write_text(res_path.read_text(encoding='utf-8'), encoding='utf-8')
+            # print("Config file '{}' created.".format(write_path.resolve()))
+            # input("Press Enter key exit...")
+            # os._exit(0)
+            # # self.conf = self._default_config()
+            # # try:
+            # #     self.conf = configparser.ConfigParser()
+            # #     try: # From single crawler debug use only
+            # #         self.conf.read('../' + path, encoding="utf-8-sig")
+            # #     except:
+            # #         self.conf.read('../' + path, encoding="utf-8")
+            # # except Exception as e:
+            # #     print("[-]Config file not found! Use the default settings")
+            # #     print("[-]",e)
+            # #     os._exit(3)
+            # #     #self.conf = self._default_config()
 
     def set_override(self, option_cmd: str):
         """
@@ -167,6 +168,12 @@ class Config:
             return self.conf.getint("common", "main_mode")
         except ValueError:
             self._exit("common:main_mode")
+
+    def local_jav_db(self) -> str:
+        try:
+            return self.conf.get("common", "local_jav_db")
+        except ValueError:
+            self._exit("common:local_jav_db")
 
     def source_folder(self) -> str:
         return self.conf.get("common", "source_folder")

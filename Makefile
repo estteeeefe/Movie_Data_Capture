@@ -27,7 +27,7 @@ make:
 	@echo "[+]Move to bin"
 	if [ ! -d "./bin" ];then  mkdir bin; fi
 	mv dist/* bin/
-	cp config.ini bin/
+	#cp config.ini bin/
 	rm -rf dist/
 
 	@echo "[+]Clean cache"

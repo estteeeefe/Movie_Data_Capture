@@ -1,4 +1,6 @@
 import sys
+import traceback
+
 sys.path.append('../')
 from ADC_function import *
 from WebCrawler.storyline import getStoryline
@@ -171,6 +173,31 @@ def getUncensored(html):
                 ' or contains(@href,"/tags/western?")]')
     return bool(x)
 
+def isOumeiNumber(number):
+    return re.search(r'[a-zA-Z]+\d{0,2}\.\d{2}\.\d{2}\.\d{2}', number)
+
+def getNumberFromLocal(javdbHref):
+    db = config.getInstance().local_jav_db()
+    get = requests.get(db + f"/javdb",
+                       params={"javdbHref": javdbHref}, verify=False)
+    j = get.json()
+    print(j)
+    if j["exist"]:
+        return j["number"]
+    else:
+        return None
+
+def getHrefFromNumber(number):
+    db = config.getInstance().local_jav_db()
+    get = requests.get(db + f"/javdb/href",
+                       params={"number": number}, verify=False)
+    j = get.json()
+    print(j)
+    if j["exist"]:
+        return j["href"]
+    else:
+        return None
+
 def main(number):
     # javdb更新后同一时间只能登录一个数字站，最新登录站会踢出旧的登录，因此按找到的第一个javdb*.json文件选择站点，
     # 如果无.json文件或者超过有效期，则随机选择一个站点。
@@ -226,8 +253,19 @@ def main(number):
         # iterate all candidates and find the match one
         urls = html.xpath('//*[contains(@class,"movie-list")]/div/a/@href')
         # 记录一下欧美的ids  ['Blacked','Blacked']
-        if re.search(r'[a-zA-Z]+\.\d{2}\.\d{2}\.\d{2}', number):
-            correct_url = urls[0]
+        correct_url = None
+        if isOumeiNumber(number):
+            print(f"handle oumei number [{number}]")
+            hrefLocal = getHrefFromNumber(number)
+            urls_c = urls[:]
+            urls_c.insert(0, hrefLocal)
+            for url in urls_c:
+                correct_url = url
+                detail_page, dp_number, lx, session = get_detail_page(correct_url, javdb_cookies, res, session)
+                if dp_number != number:
+                    print(f"oumei number[{number}] not eq fetch number[{dp_number}]")
+                else:
+                    break
         else:
             ids = html.xpath('//*[contains(@class,"movie-list")]/div/a/div[contains(@class, "video-title")]/strong/text()')
             try:
@@ -237,25 +275,16 @@ def main(number):
                 if ids[0].upper() != number:
                     raise ValueError("number not found")
                 correct_url = urls[0]
-        try:
-                # get faster benefit from http keep-alive
-                javdb_detail_url = urljoin(res.url, correct_url)
-                detail_page = session.get(javdb_detail_url).text
-        except:
-            detail_page = get_html('https://javdb.com' + correct_url, cookies=javdb_cookies)
-            session = None
-
-        # etree.fromstring开销很大，最好只用一次，而它的xpath很快，比bs4 find/select快，可以多用
-        lx = etree.fromstring(detail_page, etree.HTMLParser())
+            detail_page, dp_number, lx, session = get_detail_page(correct_url, javdb_cookies, res, session)
         imagecut = 1
-        dp_number = getNum(lx)
         if dp_number.upper() != number.upper():
             raise ValueError("number not eq"+dp_number)
         title = getTitle(lx)
         if title and dp_number:
             number = dp_number
             # remove duplicate title
-            title = title.replace(number, '').strip()
+            pattern = re.compile(number, re.IGNORECASE)
+            title = pattern.sub("", title).strip()
         dic = {
             'actor': getActor(lx),
             'title': title,
@@ -294,28 +323,56 @@ def main(number):
     except Exception as e:
         if debug:
             print(e)
+            traceback.print_exc()
         dic = {"title": ""}
     js = json.dumps(dic, ensure_ascii=False, sort_keys=True, indent=4, separators=(',', ':'), )  # .encode('UTF-8')
     return js
 
+
+def get_detail_page(correct_url, javdb_cookies, res, session):
+    try:
+        # get faster benefit from http keep-alive
+        javdb_detail_url = urljoin(res.url, correct_url)
+        detail_page = session.get(javdb_detail_url).text
+    except:
+        detail_page = get_html('https://javdb.com' + correct_url, cookies=javdb_cookies)
+        session = None
+    # etree.fromstring开销很大，最好只用一次，而它的xpath很快，比bs4 find/select快，可以多用
+    lx = etree.fromstring(detail_page, etree.HTMLParser())
+    dp_number = getNum(lx).upper()
+    return detail_page, dp_number, lx, session
+
+
 # main('DV-1562')
 # input("[+][+]Press enter key exit, you can check the error messge before you exit.\n[+][+]按回车键结束，你可以在结束之前查看和错误信息。")
 if __name__ == "__main__":
-    config.getInstance().set_override("storyline:switch=0")
-    config.getInstance().set_override("actor_photo:download_for_kodi=1")
-    config.getInstance().set_override("debug_mode:switch=1")
-    # print(main('blacked.20.05.30'))
-    print(main('AGAV-042'))
-    print(main('BANK-022'))
-    print(main('070116-197'))
-    print(main('093021_539'))  # 没有剧照 片商pacopacomama
-    #print(main('FC2-2278260'))
-    # print(main('FC2-735670'))
-    # print(main('FC2-1174949')) # not found
-    print(main('MVSD-439'))
-    # print(main('EHM0001')) # not found
-    #print(main('FC2-2314275'))
-    print(main('EBOD-646'))
-    print(main('LOVE-262'))
+    # config.getInstance().set_override("storyline:switch=0")
+    # config.getInstance().set_override("actor_photo:download_for_kodi=1")
+    # config.getInstance().set_override("debug_mode:switch=1")
+    # # print(main('blacked.20.05.30'))
+    # print(main('AGAV-042'))
+    # print(main('BANK-022'))
+    # print(main('070116-197'))
+    # print(main('093021_539'))  # 没有剧照 片商pacopacomama
+    # #print(main('FC2-2278260'))
+    # # print(main('FC2-735670'))
+    # # print(main('FC2-1174949')) # not found
+    # print(main('MVSD-439'))
+    # # print(main('EHM0001')) # not found
+    # #print(main('FC2-2314275'))
+    # print(main('EBOD-646'))
+    # print(main('LOVE-262'))
     print(main('ABP-890'))
-    print(main('blacked.14.12.08'))
+    # print(main('blacked.14.12.08'))
+    #
+    # print(main('DigitalPlayground.22.06.06'))
+    print(main('DigitalPlayground.17.02.11'))
+    # print(getNumberFromLocal("/v/neOwr9"))
+    # print(getHrefFromNumber("SM017"))
+    # print(isOumeiNumber("ddm.11.11.11"))
+    # print(isOumeiNumber("ddm1.11.11.11"))
+    # print(isOumeiNumber("ddm12.11.11.11"))
+    # print(isOumeiNumber("ddm123.11.11.11"))
+    # print(isOumeiNumber("she'snew.11.11.11"))
+    # print(isOumeiNumber('AGAV-042'))
+    # print(isOumeiNumber('BANK-022'))
